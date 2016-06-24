@@ -10,7 +10,7 @@
 
 #define MAXIMUM_HEIGHT 104000 
 #define BASE_PHEROMONE 100.0
-#define INITIAL_Q 10.0
+#define INITIAL_Q 50.0
 
 pthread_mutex_t mutexsum1;
 pthread_mutex_t mutexsum2;
@@ -50,14 +50,14 @@ typedef struct _ThreadData {
     Node * node;
 } ThreadData;
 
-void printMatrix(int matrix[][4]) {
+void printMatrix(int matrix[][4], FILE * fp) {
     int i, j;
     for (i=0; i<4; i++) {
         for (j=0; j<4; j++)
-            printf("%d ", matrix[i][j]);
-        printf("\n");
+            fprintf(fp, "%d ", matrix[i][j]);
+        fprintf(fp, "\n");
     }
-    printf("\n");
+    fprintf(fp, "\n");
 }
 
 float outOfOrder(Session * session, Node * node) {
@@ -156,20 +156,20 @@ void readFile(char filename[], int initialTable[][4]) {
 }
 
 void createLeaf(Session * session, Node * node, 
-        int i, int j, int addi, int addj) {
+        int i, int j, int addi, int addj, FILE * fp) {
     Node * leaf = malloc(sizeof(Node));
     
     memcpy(leaf->table, node->table, 4*4*sizeof(int));
     leaf->table[i][j] = leaf->table[i + addi][j + addj];
     leaf->table[i + addi][j + addj] = 0;
 
-    printf("Generated leaf: \n");
-    printMatrix(leaf->table);
+    fprintf(fp, "Generated leaf: \n");
+    printMatrix(leaf->table, fp);
 
     if (!isTableInHash(leaf->table, session->tables) || isFinal(session, node)) {
         addTableToHash(leaf->table, session->tables);
 
-        printf("------ADDED\n\n");
+        fprintf(fp, "------ADDED\n\n");
 
         leaf->height = node->height + 1;
         leaf->father = node;
@@ -180,13 +180,13 @@ void createLeaf(Session * session, Node * node,
         node->leafs[node->numberOfLeafs++] = leaf;
     }  else {
         free(leaf);
-        printf("------REFUSED\n\n");
+        fprintf(fp, "------REFUSED\n\n");
 
     }
 } 
 
 //Falta gerar hash e adionar na estrutura para verificação
-void generateLeafs(Session * session, Node * node) {
+void generateLeafs(Session * session, Node * node, FILE * fp) {
     int i, j;
 
     //printf("Generating leafs\n");
@@ -195,16 +195,16 @@ void generateLeafs(Session * session, Node * node) {
         for (j=0; j<4; j++) {
             if (0 == node->table[i][j]) {
                 if (i-1 >= 0) {
-                    createLeaf(session, node, i, j, -1, 0);
+                    createLeaf(session, node, i, j, -1, 0, fp);
                 }
                 if (i+1 <= 3) {
-                    createLeaf(session, node, i, j, +1, 0);
+                    createLeaf(session, node, i, j, +1, 0, fp);
                 }
                 if (j-1 >= 0) {
-                    createLeaf(session, node, i, j, 0, -1);
+                    createLeaf(session, node, i, j, 0, -1, fp);
                 }
                 if (j+1 <= 3) {
-                    createLeaf(session, node, i, j, 0, +1);
+                    createLeaf(session, node, i, j, 0, +1, fp);
                 }
             }
         }
@@ -232,7 +232,7 @@ int isFinal(int endTable[][4], int initialTable[][4]) {
     return false;
 }
 
-int calculateProbability(Session * session, Node * node, int chosen[4]) {
+int calculateProbability(Session * session, Node * node, int chosen[4], FILE * fp) {
     int i = 0, j;
     float uppers[4];
     float lower = 0;
@@ -247,12 +247,13 @@ int calculateProbability(Session * session, Node * node, int chosen[4]) {
         uppers[i]  = pow(leaf->pheromone, session->alpha); 
         uppers[i] *= pow(leaf->heuristic, session->beta);
         lower += uppers[i];
+        printMatrix(leaf->table, fp);
         //printf("%f %f %f \n", uppers[i], pow(leaf->pheromone, session->alpha), pow(leaf->heuristic, session->beta));
     }
 
     for (i = 0; i < node->numberOfLeafs; i++) {
         probability[i] = uppers[i]/lower;
-        printf("Leaf: %d - %f \n", i, probability[i]);
+        fprintf(fp, "Leaf: %d - %f \n", i, probability[i]);
     }
     
     for (i=0; i<4; i++) {
@@ -261,11 +262,11 @@ int calculateProbability(Session * session, Node * node, int chosen[4]) {
     }
 
 
-    printf("Chosen0: %d\n", chosen[0]);
-    printf("Chosen1: %d\n", chosen[1]);
-    printf("Chosen2: %d\n", chosen[2]);
-    printf("Chosen3: %d\n", chosen[3]);
-    printf("-----------------------------------------------------\n");
+    fprintf(fp, "Chosen0: %d\n", chosen[0]);
+    fprintf(fp, "Chosen1: %d\n", chosen[1]);
+    fprintf(fp, "Chosen2: %d\n", chosen[2]);
+    fprintf(fp, "Chosen3: %d\n", chosen[3]);
+    fprintf(fp, "-----------------------------------------------------\n");
 }
 
 int updatePheromone(float rho, Node * node) {
@@ -277,23 +278,23 @@ int updatePheromone(float rho, Node * node) {
     } while (node != NULL);
 }
 
-bool applyConstruction(Session * session, Node * node) {
+bool applyConstruction(Session * session, Node * node, FILE * fp) {
     int chosen[4], i=0;
 
     if (!isFinal(session->endTable, node->table) && node->height < MAXIMUM_HEIGHT) {
-        printf("Altura: %d\n", node->height);
+        fprintf(fp, "Altura: %d\n", node->height);
         
         pthread_mutex_lock(&mutexsum1);
         if (0 == node->numberOfLeafs) {
-            generateLeafs(session, node);
+            generateLeafs(session, node, fp);
         }
         pthread_mutex_unlock(&mutexsum1);
         
         if (0 == node->numberOfLeafs) return false;
-        printf("NOL: %d\n", node->numberOfLeafs);
+        fprintf(fp, "NOL: %d\n", node->numberOfLeafs);
 
-        calculateProbability(session, node, chosen);
-        while (!applyConstruction(session, node->leafs[chosen[i++]])) {
+        calculateProbability(session, node, chosen, fp);
+        while (!applyConstruction(session, node->leafs[chosen[i++]], fp)) {
             if (i == 4 || chosen[i] == -1) return false;
         } 
         
@@ -308,7 +309,7 @@ bool applyConstruction(Session * session, Node * node) {
         updatePheromone(session->rho, node);
         if (session->best == NULL) {
             session->best = node;
-        } else if (session->best->height > node->height) {
+        } else if (session->best->height < node->height) {
             session->best = node;
         }
 
@@ -324,9 +325,17 @@ void * buildSolutions(void * threadData) {
 
     int dataVision = TD->session->antNumber/TD->numberOfThreads;
    
+    //Better print
+    char name[50], src[10];
+    sprintf(src, "%d", (int)tId);
+    strcpy(name, "output");
+    strcat(name, src);
+    strcat(name, ".txt");
+    FILE * fp = fopen(name, "w+");
+
     int i; 
     for (i=0; i<dataVision; i++) {
-        applyConstruction(TD->session, TD->node);
+        applyConstruction(TD->session, TD->node, fp);
     }
 }
 

@@ -42,7 +42,7 @@ Thumbs.db
 
 # DATA #
 ########
-output.txt
+output*
 err.txt
 
 ### Vim ###
