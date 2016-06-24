@@ -40,6 +40,11 @@ Thumbs.db
 ##################
 *.out
 
+# DATA #
+########
+output.txt
+err.txt
+
 ### Vim ###
 # swap
 [._]*.s[a-w][a-z]
