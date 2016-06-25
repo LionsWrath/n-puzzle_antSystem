@@ -287,27 +287,30 @@ bool applyConstruction(Session * session, Node * node) {
         while (!applyConstruction(session, node->leafs[chosen[i++]])) {
             if (i == 4 || chosen[i] == -1) return false;
         } 
-        
+       
         return true;
     } else if (node->height >= MAXIMUM_HEIGHT) {
         updatePheromone(session->rho + .2, node);
         return false;
     } else {
         updatePheromone(session->rho, node);
+
+        printf("OR HERE");
         if (session->best == NULL) {
             session->best = node;
         } else if (session->best->height > node->height) {
+            printf("WUT\n");
             session->best = node;
         }
         return true;
     }
 }
 
-void buildSolutions(Session session, Node root) {
+void buildSolutions(Session * session, Node root) {
     int i;
     
-    for (i=0; i<session.antNumber; i++) {
-        if (applyConstruction(&session, &root));
+    for (i=0; i<session->antNumber; i++) {
+        if (applyConstruction(session, &root));
     }
 }
 
@@ -320,10 +323,6 @@ void initializeNode(Node * node, int matrix[][4]) {
     memcpy(node->table, matrix, 4*4*sizeof(int));
 }
 
-void findPath(Session * session, Node * root) {
-    //Find best path
-}
-
 int main(int argc, char *argv[]) {
     FILE *in;
     char filename[50];
@@ -333,7 +332,7 @@ int main(int argc, char *argv[]) {
 
     Session session;
     session.tables = NULL;
-    session.best = NULL;
+    session.best = 0;
 
     int initialTable[4][4];
     int dummyTable[4][4] = { { 1,  2,  3,  4}, 
@@ -388,7 +387,7 @@ int main(int argc, char *argv[]) {
 
     int i;
     for (i=0; i<cycles; i++) 
-        buildSolutions(session, root);
+        buildSolutions(&session, root);
 
     clock_gettime(CLOCK_MONOTONIC, &finish);
 

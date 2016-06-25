@@ -379,7 +379,7 @@ int main(int argc, char *argv[]) {
     //Clean Table
     table_t * s, *tmp;
     HASH_ITER(hh, session.tables, s, tmp) {
-        printf("FREE: %s\n", s->id);
+        //printf("FREE: %s\n", s->id);
         HASH_DEL(session.tables, s);
         free(s);
     }

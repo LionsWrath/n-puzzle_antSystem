@@ -427,6 +427,9 @@ int main(int argc, char *argv[]) {
 
     printf("Total time: %f\n\n", elapsed);
 
+    if (session.best != NULL) printf("Número de jogadas: %d\n", session.best->height);
+    else printf("Sem resultado!\n");
+
     table_t * s, *tmp;
     HASH_ITER(hh, session.tables, s, tmp) {
         //printf("FREE: %s\n", s->id);
